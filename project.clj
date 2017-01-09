@@ -5,4 +5,5 @@
   :main ^:skip-aot convert-clj.core
   :target-path "target/%s"
   :global-vars {*assert* true}
+  :profiles {:uberjar {:aot :all}}
   )

@@ -2,7 +2,6 @@
 ;
 ; Author: Tom Cooper
 ; Date: 2017-01-06
-
 (ns convert-clj.core
   (:gen-class))
 
@@ -10,15 +9,15 @@
 (def given-input "(id,created,employee(id,firstname,employeeType(id), lastname),location)")
 
 ; Tuples
-(defn create-tuple [depth name] [depth name])
+(defprotocol TupleType (output-name [this]))
 
-(def tuple-name second)
-
-(defn tuple-string [[depth name]]
-  (if (<= depth 1)
-    name
-    (apply str
-           (flatten (list (repeat (dec depth) "-") " " name)))))
+(defrecord Tuple [depth name]
+  TupleType
+  (output-name [{:keys [depth name]}]
+      (if (<= depth 1)
+        name
+        (apply str
+               (flatten (list (repeat (dec depth) "-") " " name))))))
 
 ; Parsing
 (defn tokenize [txt] (re-seq #"\(|\)|\w+" txt))
@@ -29,7 +28,7 @@
             (case t
               "(" (update acc :depth inc)
               ")" (update acc :depth dec)
-              (update acc :result conj (create-tuple (:depth acc) t))))]
+              (update acc :result conj (->Tuple (:depth acc) t))))]
     (reduce reduce-fn {:result () :depth 0} (tokenize txt))))
 
 (defn convert [txt]
@@ -37,7 +36,7 @@
 
 ; Output
 (defn output-list [c]
-  (doseq [w c] (-> w tuple-string println)))
+  (doseq [w c] (-> w output-name println)))
 
 ; Main
 (defn -main
@@ -49,6 +48,6 @@
       (println "Original order:")
       (output-list converted)
       (println "\nSorted order:")
-      (output-list (sort-by tuple-name converted)))
+      (output-list (sort-by :name converted)))
     (catch AssertionError e
       (println "Mismatched parens: " (.getMessage e)))))
