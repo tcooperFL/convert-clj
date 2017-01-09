@@ -30,7 +30,8 @@ build what is necessary on the fly.
 
 ## Running the solution
 
-Run the executable jar file. To turn off assertion checking,
+By default, this solution checks for balanced parens.
+To turn off this assertion checking,
 change the line in the project.clj file that controls assertion checking to false.
 
 ```
