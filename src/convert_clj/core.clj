@@ -20,19 +20,17 @@
                (flatten (list (repeat (dec depth) "-") " " name))))))
 
 ; Parsing
-(defn tokenize [txt] (re-seq #"\(|\)|\w+" txt))
-
-(defn parse [txt]
+(defn parse [txt tokenize-fn]
   {:post [(= (:depth %) 0)]}
   (letfn [(reduce-fn [acc t]
             (case t
               "(" (update acc :depth inc)
               ")" (update acc :depth dec)
               (update acc :result conj (->Tuple (:depth acc) t))))]
-    (reduce reduce-fn {:result () :depth 0} (tokenize txt))))
+    (reduce reduce-fn {:result () :depth 0} (tokenize-fn txt))))
 
 (defn convert [txt]
-  (reverse (:result (parse txt))))
+  (reverse (:result (parse txt (partial re-seq #"\(|\)|\w+")))))
 
 ; Output
 (defn output-list [c]
