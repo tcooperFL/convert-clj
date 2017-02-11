@@ -5,10 +5,10 @@ Parse the given string of words, whitespace, and parentheses. Output each word o
 with hyphen indentation corresponding to the parenthesis nesting level.
 
 Bonus problem:
-Output the lines in word-sorted order.
+Output the lines in word-sorted order at each level.
 
 Author: Tom Cooper
-Date: 2017-01-08
+Date: 2017-02-10
 
 This program is written in [Clojure](http://clojure.org), a modern LISP language that
 is highly productive, concise, functional, and scalable.
@@ -47,7 +47,7 @@ This demonstrates the given example. Test it on your own strings by giving it
 a string argument.
 
 ```
-lein run "(a,b(foo(((deep stuff)))), c)"
+lein run "(a,c(foo(y, x)), b)"
 ```
 
 Output:
@@ -55,17 +55,17 @@ Output:
 ```
 Original order:
 a
-b
-- foo
----- deep
----- stuff
 c
+- foo
+-- y
+-- x
+b
 
 Sorted order:
 a
 b
 c
----- deep
 - foo
----- stuff
+-- x
+-- y
 ```
