@@ -26,30 +26,26 @@
 (defn add-token
   "Trim the token and cons it onto the current node list"
   [tok [node & remaining]]
-  (cons (cons (list (s/trim tok)) node) remaining))
-
-(defn validate-ast
-  "Throw assertion errors if the resulting AST is not well formed"
-  [[root & more :as ast]]
-  (when (not (= root :root))
-    (assert (and (coll? root) (not (= root '(:root)))) "missing outer parens")
-    (assert false "mismatched parens"))
-  true)
+  (cons (cons (list tok) node) remaining))
 
 (defn parse
-  "Given a sequence of tokenized strings, create corresponding nested structures"
+  "Convert sequence of strings into a lisp-style nested list structure starting with :root"
   [tokens]
-  {:post [(validate-ast %)]}
+  {:pre  [(not (assert (= "(" (first tokens)) "missing outer open paren"))
+          (not (assert (= ")" (last tokens)) "missing outer close paren"))]
+   :post [(not (assert (= :root (first %)) "mismatched parens"))]}
   (ffirst (reduce #(case %2
-                     "(" (new-level %)
+                     "(" (do (assert (not (nil? (ffirst %))) "orphaned list") (new-level %))
                      ")" (end-level %)
+                     "" %                                   ;ignore trimmed spaces before parens
                      (add-token %2 %))
-                  '(((:root))) tokens)))
+                  '(((:root)))
+                  (map s/trim tokens))))
 
 (defn convert
-  "Break the string into tokens by splitting on commas, and parens independently"
-  [txt]
-  (parse (re-seq #"\(|\)|[^()\t\n,]+" txt)))
+  "Parse the sequence of tokens created by splitting the argument on commas, separating out parens"
+  [s]
+  (parse (re-seq #"\(|\)|[^()\t\n,]+" s)))
 
 ; Output
 (defn name-of
