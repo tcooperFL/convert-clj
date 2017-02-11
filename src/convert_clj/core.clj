@@ -1,40 +1,71 @@
-; Code Challenge: Parse nested string, printing in original and sorted order
+; Code Challenge: Parse nested string, printing in original and (bonus) sorted order
 ;
 ; Author: Tom Cooper
-; Date: 2017-01-06
+; Date: 2017-02-10
 (ns convert-clj.core
+  (:require [clojure.string :as s])
   (:gen-class))
 
 ; The given challenge problem, used if none given on the command line.
-(def given-input "(id,created,employee(id,firstname,employeeType(id), lastname),location)")
-
-; Tuples
-(defprotocol TupleType (output-name [this]))
-
-(defrecord Tuple [depth name]
-  TupleType
-  (output-name [{:keys [depth name]}]
-      (if (<= depth 1)
-        name
-        (apply str
-               (flatten (list (repeat (dec depth) "-") " " name))))))
+; Assumes the outer parens are optional, and that nested lists immediately
+; follow a word, and are interpreted as children of that word.
+(def given-input "(id,created,employee(id,first name,employeeType(id), lastname),location)")
+(def indentation-threshold 2)
 
 ; Parsing
-(defn parse [txt tokenize-fn]
-  {:post [(= (:depth %) 0)]}
-  (letfn [(reduce-fn [acc t]
-            (case t
-              "(" (update acc :depth inc)
-              ")" (update acc :depth dec)
-              (update acc :result conj (->Tuple (:depth acc) t))))]
-    (reduce reduce-fn {:result () :depth 0} (tokenize-fn txt))))
+(defn new-level
+  "Start a new list by pushing an empty list onto the stack"
+  [stack]
+  (cons '() stack))
 
-(defn convert [txt]
-  (reverse (:result (parse txt (partial re-seq #"\(|\)|\w+")))))
+(defn end-level
+  "End a list by reducing and consing it onto the parent child list"
+  [[node [[parent] & sibs] & remaining]]
+  (cons (cons (remove nil? (cons parent (reverse node))) sibs) remaining))
+
+(defn add-token
+  "Trim the token and cons it onto the current node list"
+  [tok [node & remaining]]
+  (cons (cons (list (s/trim tok)) node) remaining))
+
+(defn validate-ast
+  "Throw assertion errors if the resulting AST is not well formed"
+  [[root & more :as ast]]
+  (when (not (= root :root))
+    (assert (and (coll? root) (not (= root '(:root)))) "missing outer parens")
+    (assert false "mismatched parens"))
+  true)
+
+(defn parse
+  "Given a sequence of tokenized strings, create corresponding nested structures"
+  [tokens]
+  {:post [(validate-ast %)]}
+  (ffirst (reduce #(case %2
+                     "(" (new-level %)
+                     ")" (end-level %)
+                     (add-token %2 %))
+                  '(((:root))) tokens)))
+
+(defn convert
+  "Break the string into tokens by splitting on commas, and parens independently"
+  [txt]
+  (parse (re-seq #"\(|\)|[^()\t\n,]+" txt)))
 
 ; Output
-(defn output-list [c]
-  (doseq [w c] (-> w output-name println)))
+(defn name-of
+  "Return the string naqme of this node at this depth, with the proper '-' prefix"
+  [c d]
+  (apply str (concat (repeat d "-") (if (> d 0) " " "") (first c))))
+
+(defn output-list
+  "Output the children of this ast using the given sort function.
+   If not supplied, then print it in the original order."
+  ([ast] (output-list ast (constantly 0)))
+  ([ast sort-fn] (output-list ast sort-fn (- indentation-threshold 2)))
+  ([ast sort-fn depth]
+   (doseq [child (sort-by first sort-fn (rest ast))]
+     (println (name-of child depth))
+     (output-list child sort-fn (inc depth)))))
 
 ; Main
 (defn -main
@@ -43,9 +74,9 @@
   (try
     (let [problem (or (first args) given-input)
           converted (convert problem)]
-      (println "Original order:")
+      (println "\nOriginal order:")
       (output-list converted)
       (println "\nSorted order:")
-      (output-list (sort-by :name converted)))
+      (output-list converted compare))
     (catch AssertionError e
-      (println "Mismatched parens: " (.getMessage e)))))
+      (println (.getMessage e)))))
